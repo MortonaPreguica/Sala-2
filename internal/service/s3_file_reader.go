@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
     "context"
@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func main() {
+func File_reader() {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		panic(err)
