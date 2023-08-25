@@ -1,14 +1,18 @@
 package main
 
 import (
+	"Sala-2/internal/environment"
 	"Sala-2/internal/interface/rest"
 	"fmt"
 
+	"github.com/bavatech/envloader"
 	"github.com/labstack/echo/v4"
 )
 
 func main() {
-	fmt.Println("Hello, World!")
+	if err := envloader.Load(&environment.Env); err != nil {
+		panic(err)
+	}
 
 	e := echo.New()
 	e.HideBanner = true
@@ -16,7 +20,7 @@ func main() {
 
 	rest.RegisterRoutes(e)
 
-	if err := e.Start(fmt.Sprintf(":5000")); err != nil {
+	if err := e.Start(fmt.Sprintf(":%s", environment.Env.ServerPort)); err != nil {
 		panic(err)
 	}
 }
