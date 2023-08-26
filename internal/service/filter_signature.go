@@ -3,9 +3,6 @@ package service
 import (
 	"image"
 	"image/color"
-	"image/jpeg"
-	"log"
-	"os"
 )
 
 func toBlackAndWhite(originalImage image.Image, whiteThreshold uint8) image.Image {
@@ -40,29 +37,8 @@ func toBlackAndWhite(originalImage image.Image, whiteThreshold uint8) image.Imag
 	return modifiedImg
 }
 
-func filter_signature() {
-	inputFile, err := os.Open("path_to_file")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer inputFile.Close()
-
-	img, _, err := image.Decode(inputFile)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
+func FilterSignature(img image.Image) image.Image {
 	const whiteThreshold = uint8(80)
 	blackAndWhiteImg := toBlackAndWhite(img, whiteThreshold)
-
-	outputFile, err := os.Create("path_to_output/output.jpeg")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer outputFile.Close()
-
-	err = jpeg.Encode(outputFile, blackAndWhiteImg, nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	return blackAndWhiteImg
 }

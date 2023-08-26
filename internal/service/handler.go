@@ -3,10 +3,7 @@ package service
 import (
 	"Sala-2/internal/utils"
 	"bytes"
-	"context"
-	"encoding/base64"
 	"image"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -16,17 +13,29 @@ import (
 )
 
 func UploadImageHandler(c echo.Context) error {
-	body, err := ioutil.ReadAll(c.Request().Body)
+	ctx := c.Request().Context()
+	imageFile, err := c.FormFile("image")
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "Erro ao ler o corpo da solicitação")
+		return c.String(http.StatusBadRequest, "Erro ao obter o arquivo da imagem")
 	}
 
-	imageData, err := base64.StdEncoding.DecodeString(string(body))
+	src, err := imageFile.Open()
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Erro ao abrir o arquivo da imagem")
+	}
+	defer src.Close()
+
+	imge, _, err := image.Decode(src)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "Erro ao decodificar a imagem")
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	imageData, err := utils.ImageToBytesJPEG(imge)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Erro ao ler o arquivo da imagem")
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -38,7 +47,7 @@ func UploadImageHandler(c echo.Context) error {
 		return c.String(500, "Erro ao decodificar a imagem")
 	}
 
-	result, err := client.AnalyzeDocument(context.TODO(), &textract.AnalyzeDocumentInput{
+	result, err := client.AnalyzeDocument(ctx, &textract.AnalyzeDocumentInput{
 		Document: &types.Document{
 			Bytes: imageData,
 		},
@@ -54,12 +63,21 @@ func UploadImageHandler(c echo.Context) error {
 
 	for _, block := range blocks {
 		if block.BlockType == "SIGNATURE" {
-			err := utils.CropImage(img, block)
+			img, err := utils.CropImage(img, block)
 			if err != nil {
 				return c.String(500, err.Error())
 			}
 
-			return c.File("cropped_signature_field.jpg")
+			imgBaW := FilterSignature(img)
+			imgNoBg := utils.MakeWhiteTransparent(imgBaW)
+
+			imgBytes, err := utils.ImageToBytes(imgNoBg)
+			if err != nil {
+				return c.String(500, err.Error())
+			}
+
+			c.Response().Header().Set(echo.HeaderContentType, "image/png")
+			return c.Blob(200, "image/png", imgBytes)
 		}
 	}
 
